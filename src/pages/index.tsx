@@ -19,6 +19,7 @@ const Home = () => {
     lastname: "",
   });
   const [loginData, setLoginData] = useState({ email: "", password: "" });
+  const [rememberMe, setRememberMe] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
 
@@ -33,11 +34,18 @@ const Home = () => {
   };
 
   const handleSignup = async () => {
-    setError(null); // Clear previous error
+    setError(null);
     try {
       const authData = await signup(signupData);
       setAuthToken(authData.accessToken);
       setRefreshToken(authData.refreshToken);
+
+      if (rememberMe) {
+        localStorage.setItem("refreshToken", authData.refreshToken);
+      } else {
+        localStorage.removeItem("refreshToken");
+      }
+
       setUserInfo({ email: signupData.email });
       alert("Signup successful!");
     } catch (error: any) {
@@ -46,11 +54,18 @@ const Home = () => {
   };
 
   const handleLogin = async () => {
-    setError(null); // Clear previous error
+    setError(null);
     try {
       const authData = await login(loginData);
       setAuthToken(authData.accessToken);
       setRefreshToken(authData.refreshToken);
+
+      if (rememberMe) {
+        localStorage.setItem("refreshToken", authData.refreshToken);
+      } else {
+        localStorage.removeItem("refreshToken");
+      }
+
       setUserInfo({ email: loginData.email });
       alert("Login successful!");
     } catch (error: any) {
@@ -61,6 +76,7 @@ const Home = () => {
   const handleLogout = () => {
     setAuthToken(null);
     setRefreshToken(null);
+    localStorage.removeItem("refreshToken");
     setUserInfo({ email: null });
   };
 
@@ -73,7 +89,7 @@ const Home = () => {
         </div>
       ) : (
         <div style={{ display: "flex", gap: "2rem" }}>
-          <div>
+          <div className="flex flex-col">
             {error && <p style={{ color: "red" }}>{error}</p>}
 
             <h2>Signup</h2>
@@ -108,7 +124,7 @@ const Home = () => {
             <button onClick={handleSignup}>Signup</button>
           </div>
 
-          <div>
+          <div className="flex flex-col">
             <h2>Login</h2>
             <input
               type="email"
@@ -125,6 +141,15 @@ const Home = () => {
               onChange={handleLoginChange}
             />
             <button onClick={handleLogin}>Login</button>
+          </div>
+          <div>
+            <input
+              type="checkbox"
+              id="rememberMe"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+            />
+            <label htmlFor="rememberMe">Remember Me</label>
           </div>
         </div>
       )}
