@@ -1,13 +1,17 @@
 import React, { useEffect, useState } from "react";
-import { fetchPosts } from "@/api/posts";
-import { useRecoilValue } from "recoil";
-import { authTokenState, userInfoState } from "@/state/atoms";
 import { Box, Button, Text, VStack, Heading } from "@chakra-ui/react";
+import { useRecoilValue } from "recoil";
+
+import { Post } from "@/types/types";
+import { fetchPosts } from "@/api/posts";
+import { authTokenState, userInfoState } from "@/state/atoms";
+
+import withAuth from "@/components/withAuth";
 
 const Home = () => {
   const authToken = useRecoilValue(authTokenState);
   const userInfo = useRecoilValue(userInfoState);
-  const [posts, setPosts] = useState([]);
+  const [posts, setPosts] = useState<Post[] | []>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -29,14 +33,6 @@ const Home = () => {
     localStorage.removeItem("refreshToken");
     window.location.href = "/auth";
   };
-
-  if (!authToken) {
-    return (
-      <Box className="flex items-center justify-center min-h-screen">
-        <Text>Please login to view posts.</Text>
-      </Box>
-    );
-  }
 
   return (
     <Box className="flex flex-col min-h-screen bg-gray-50 text-black">
@@ -66,7 +62,7 @@ const Home = () => {
         >
           {posts.length > 0 ? (
             <VStack spacing={4} align="stretch">
-              {posts.map((post: any) => (
+              {posts.map((post: Post) => (
                 <Box
                   key={post.id}
                   className="border-b last:border-none py-2 px-2"
@@ -88,4 +84,4 @@ const Home = () => {
   );
 };
 
-export default Home;
+export default withAuth(Home);

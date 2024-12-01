@@ -1,7 +1,8 @@
 import React from "react";
-import { useRecoilState, useSetRecoilState } from "recoil";
+import { useSetRecoilState } from "recoil";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/router";
+
 import {
   authTokenState,
   refreshTokenState,
@@ -9,15 +10,15 @@ import {
 } from "@/state/atoms";
 import { signup, login } from "@/api/auth";
 import { Button, Input, Box, Heading, Text } from "@chakra-ui/react";
-import { Checkbox } from "@chakra-ui/checkbox";
+// import { Checkbox } from "@chakra-ui/checkbox";
 
 const AuthPage = () => {
-  const signupForm = useForm(); // For signup form
-  const loginForm = useForm(); // For login form
+  const signupForm = useForm();
+  const loginForm = useForm();
   const router = useRouter();
-  const [authToken, setAuthToken] = useRecoilState(authTokenState);
+  const setAuthToken = useSetRecoilState(authTokenState);
   const setRefreshToken = useSetRecoilState(refreshTokenState);
-  const [userInfo, setUserInfo] = useRecoilState(userInfoState);
+  const setUserInfo = useSetRecoilState(userInfoState);
 
   const onSubmit = async (data: any, isSignup: boolean) => {
     try {
@@ -111,7 +112,3 @@ const AuthPage = () => {
 };
 
 export default AuthPage;
-
-/*const NewAuthPage = () => <div>Simple Auth Page</div>;
-
-export default NewAuthPage;*/
