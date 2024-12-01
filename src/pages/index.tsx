@@ -1,159 +1,90 @@
-import React, { useState } from "react";
-import { useRecoilState, useSetRecoilState } from "recoil";
-import {
-  authTokenState,
-  refreshTokenState,
-  userInfoState,
-} from "@/state/atoms";
-import { signup, login } from "@/api/auth";
+import React, { useEffect, useState } from "react";
+import { fetchPosts } from "@/api/posts";
+import { useRecoilValue } from "recoil";
+import { authTokenState, userInfoState } from "@/state/atoms";
+import { Box, Button, Text, VStack, Heading } from "@chakra-ui/react";
 
 const Home = () => {
-  const [authToken, setAuthToken] = useRecoilState(authTokenState);
-  const setRefreshToken = useSetRecoilState(refreshTokenState);
-  const [userInfo, setUserInfo] = useRecoilState(userInfoState);
-
-  const [signupData, setSignupData] = useState({
-    email: "",
-    password: "",
-    firstname: "",
-    lastname: "",
-  });
-  const [loginData, setLoginData] = useState({ email: "", password: "" });
-  const [rememberMe, setRememberMe] = useState(false);
-
+  const authToken = useRecoilValue(authTokenState);
+  const userInfo = useRecoilValue(userInfoState);
+  const [posts, setPosts] = useState([]);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSignupChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setSignupData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleLoginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setLoginData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSignup = async () => {
-    setError(null);
-    try {
-      const authData = await signup(signupData);
-      setAuthToken(authData.accessToken);
-      setRefreshToken(authData.refreshToken);
-
-      if (rememberMe) {
-        localStorage.setItem("refreshToken", authData.refreshToken);
-      } else {
-        localStorage.removeItem("refreshToken");
+  useEffect(() => {
+    const loadPosts = async () => {
+      try {
+        const fetchedPosts = await fetchPosts();
+        setPosts(fetchedPosts);
+      } catch (error: any) {
+        setError(error.message);
       }
+    };
 
-      setUserInfo({ email: signupData.email });
-      alert("Signup successful!");
-    } catch (error: any) {
-      setError(error.message || "Failed to signup. Please try again.");
+    if (authToken) {
+      loadPosts();
     }
-  };
-
-  const handleLogin = async () => {
-    setError(null);
-    try {
-      const authData = await login(loginData);
-      setAuthToken(authData.accessToken);
-      setRefreshToken(authData.refreshToken);
-
-      if (rememberMe) {
-        localStorage.setItem("refreshToken", authData.refreshToken);
-      } else {
-        localStorage.removeItem("refreshToken");
-      }
-
-      setUserInfo({ email: loginData.email });
-      alert("Login successful!");
-    } catch (error: any) {
-      setError(error.message || "Failed to login. Please try again.");
-    }
-  };
+  }, [authToken]);
 
   const handleLogout = () => {
-    setAuthToken(null);
-    setRefreshToken(null);
     localStorage.removeItem("refreshToken");
-    setUserInfo({ email: null });
+    window.location.href = "/auth";
   };
 
+  if (!authToken) {
+    return (
+      <Box className="flex items-center justify-center min-h-screen">
+        <Text>Please login to view posts.</Text>
+      </Box>
+    );
+  }
+
   return (
-    <div style={{ padding: "2rem" }}>
-      {authToken ? (
-        <div>
-          <h1>Welcome {userInfo.email}</h1>
-          <button onClick={handleLogout}>Logout</button>
-        </div>
-      ) : (
-        <div style={{ display: "flex", gap: "2rem" }}>
-          <div className="flex flex-col">
-            {error && <p style={{ color: "red" }}>{error}</p>}
+    <Box className="flex flex-col min-h-screen bg-gray-50 text-black">
+      <Box
+        className="p-4 bg-white shadow-md flex justify-between items-center"
+        as="header"
+      >
+        <Heading as="h1" size="lg">
+          Welcome {userInfo.email}
+        </Heading>
+        <Button
+          colorScheme="red"
+          size="sm"
+          onClick={handleLogout}
+          className="hover:bg-red-600"
+        >
+          Logout
+        </Button>
+      </Box>
 
-            <h2>Signup</h2>
-            <input
-              type="email"
-              name="email"
-              placeholder="Email"
-              value={signupData.email}
-              onChange={handleSignupChange}
-            />
-            <input
-              type="password"
-              name="password"
-              placeholder="Password"
-              value={signupData.password}
-              onChange={handleSignupChange}
-            />
-            <input
-              type="text"
-              name="firstname"
-              placeholder="First Name"
-              value={signupData.firstname}
-              onChange={handleSignupChange}
-            />
-            <input
-              type="text"
-              name="lastname"
-              placeholder="Last Name"
-              value={signupData.lastname}
-              onChange={handleSignupChange}
-            />
-            <button onClick={handleSignup}>Signup</button>
-          </div>
+      <Box as="main" className="flex-grow p-4">
+        {error && <Text color="red.500">{error}</Text>}
 
-          <div className="flex flex-col">
-            <h2>Login</h2>
-            <input
-              type="email"
-              name="email"
-              placeholder="Email"
-              value={loginData.email}
-              onChange={handleLoginChange}
-            />
-            <input
-              type="password"
-              name="password"
-              placeholder="Password"
-              value={loginData.password}
-              onChange={handleLoginChange}
-            />
-            <button onClick={handleLogin}>Login</button>
-          </div>
-          <div>
-            <input
-              type="checkbox"
-              id="rememberMe"
-              checked={rememberMe}
-              onChange={(e) => setRememberMe(e.target.checked)}
-            />
-            <label htmlFor="rememberMe">Remember Me</label>
-          </div>
-        </div>
-      )}
-    </div>
+        <Box
+          className="h-[70vh] overflow-y-auto rounded shadow-md bg-white p-4"
+          borderWidth="1px"
+        >
+          {posts.length > 0 ? (
+            <VStack spacing={4} align="stretch">
+              {posts.map((post: any) => (
+                <Box
+                  key={post.id}
+                  className="border-b last:border-none py-2 px-2"
+                  borderBottomWidth="1px"
+                >
+                  <Heading as="h2" size="md" className="text-black">
+                    {post.title}
+                  </Heading>
+                  <Text className="text-black">{post.content}</Text>
+                </Box>
+              ))}
+            </VStack>
+          ) : (
+            <Text className="text-black">No posts available.</Text>
+          )}
+        </Box>
+      </Box>
+    </Box>
   );
 };
 

@@ -1,19 +1,8 @@
-import axios from "axios";
 import axiosInstance from "@/api/axiosInstance";
+import { handleApiError } from "@/api/errorHandler";
 import { SignupInput, LoginInput, Auth, RefreshTokenInput } from "@/types/api";
 
 const BASE_URL = "https://frontend-test-be.stage.thinkeasy.cz/auth";
-
-const handleApiError = (error: any) => {
-  if (axios.isAxiosError(error)) {
-    const status = error.response?.status;
-    const message =
-      error?.response?.data?.message ||
-      "Something went wrong. Please try again.";
-    throw { status, message };
-  }
-  throw { status: 500, message: "An unexpected error occurred." };
-};
 
 export async function signup(input: SignupInput): Promise<Auth> {
   try {
