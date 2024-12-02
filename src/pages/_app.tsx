@@ -4,7 +4,6 @@ import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import { RecoilRoot, useRecoilValue, useSetRecoilState } from "recoil";
 
 import { geistSans, geistMono } from "@/theme/fonts";
-import axiosInstance, { setupAxiosInterceptors } from "@/api/axiosInstance";
 import { authTokenState, refreshTokenState } from "@/state/atoms";
 
 import "../styles/globals.css";
@@ -12,22 +11,22 @@ import { useRouter } from "next/router";
 import Header from "@/components/Header";
 
 const AppInitializer = () => {
-  const getAuthToken = useRecoilValue(authTokenState);
-  const getRefreshToken = useRecoilValue(refreshTokenState);
+  const authToken = useRecoilValue(authTokenState);
+  const refreshToken = useRecoilValue(refreshTokenState);
   const setAuthToken = useSetRecoilState(authTokenState);
   const setRefreshToken = useSetRecoilState(refreshTokenState);
 
   useEffect(() => {
     // :todo This is redundant since the refresh-token requires access token for some reason, but anyway it is here
     // Hydrate Recoil state with refresh token from localStorage
-    const refreshToken = localStorage.getItem("refreshToken");
-    if (refreshToken) {
+    const localRefreshToken = localStorage.getItem("refreshToken");
+    if (localRefreshToken) {
       console.log("refresh:");
-      console.log(refreshToken);
-      setRefreshToken(refreshToken);
+      console.log(localRefreshToken);
+      setRefreshToken(localRefreshToken);
 
       // Attempt to refresh the access token on app load
-      axiosInstance
+      /*axiosInstance
         .post("/auth/refresh-token", { token: refreshToken })
         .then((response) => {
           setAuthToken(response.data.access_token);
@@ -36,16 +35,8 @@ const AppInitializer = () => {
           console.log("Failed to refresh token:", error);
           localStorage.removeItem("refreshToken");
           setRefreshToken(null);
-        });
+        });*/
     }
-
-    // Initialize Axios interceptors
-    setupAxiosInterceptors(
-      () => getAuthToken,
-      () => getRefreshToken,
-      setAuthToken,
-      setRefreshToken,
-    );
   }, []);
 
   return null;

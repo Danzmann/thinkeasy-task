@@ -2,12 +2,16 @@ import React, { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { Box, Heading, Text, Spinner, Button } from "@chakra-ui/react";
 
-import { fetchPostById } from "@/api/posts";
 import { Post } from "@/types/types";
+import { useApi } from "@/hooks/useApi";
+import { ENDPOINTS, METHODS } from "@/constants/api";
+import withAuth from "@/components/withAuth";
 
 const PostDetails = () => {
   const router = useRouter();
   const { id } = router.query;
+
+  const { apiCall } = useApi();
 
   const [post, setPost] = useState<Post | null>(null);
   const [loading, setLoading] = useState(true);
@@ -18,7 +22,10 @@ const PostDetails = () => {
       if (id) {
         try {
           setLoading(true);
-          const fetchedPost = await fetchPostById(id as string);
+          const fetchedPost = await apiCall<Post>(
+            ENDPOINTS.postById(id as string),
+            METHODS.GET,
+          );
           setPost(fetchedPost);
         } catch (error: any) {
           setError(error.message || "Failed to load post.");
@@ -71,4 +78,4 @@ const PostDetails = () => {
   );
 };
 
-export default PostDetails;
+export default withAuth(PostDetails);
