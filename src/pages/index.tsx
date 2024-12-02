@@ -1,18 +1,21 @@
 import React, { useEffect, useState } from "react";
-import { Box, Button, Text, VStack, Heading } from "@chakra-ui/react";
+import { Box, Button, VStack, Heading, Text } from "@chakra-ui/react";
 import { useRecoilValue } from "recoil";
+import { useRouter } from "next/router";
 
 import { Post } from "@/types/types";
 import { fetchPosts } from "@/api/posts";
 import { authTokenState, userInfoState } from "@/state/atoms";
 
 import withAuth from "@/components/withAuth";
+import PostCard from "@/components/PostCard";
 
 const Home = () => {
   const authToken = useRecoilValue(authTokenState);
   const userInfo = useRecoilValue(userInfoState);
   const [posts, setPosts] = useState<Post[] | []>([]);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     const loadPosts = async () => {
@@ -29,50 +32,25 @@ const Home = () => {
     }
   }, [authToken]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("refreshToken");
-    window.location.href = "/auth";
-  };
-
   return (
     <Box className="flex flex-col min-h-screen bg-gray-50 text-black">
-      <Box
-        className="p-4 bg-white shadow-md flex justify-between items-center"
-        as="header"
-      >
-        <Heading as="h1" size="lg">
-          Welcome {userInfo.email}
-        </Heading>
-        <Button
-          colorScheme="red"
-          size="sm"
-          onClick={handleLogout}
-          className="hover:bg-red-600"
-        >
-          Logout
-        </Button>
-      </Box>
-
+      {/* Main Content */}
       <Box as="main" className="flex-grow p-4">
         {error && <Text color="red.500">{error}</Text>}
 
         <Box
-          className="h-[70vh] overflow-y-auto rounded shadow-md bg-white p-4"
+          className="h-[70vh] overflow-y-auto rounded shadow-md bg-gray-100 p-4"
           borderWidth="1px"
         >
           {posts.length > 0 ? (
             <VStack spacing={4} align="stretch">
               {posts.map((post: Post) => (
-                <Box
+                <PostCard
                   key={post.id}
-                  className="border-b last:border-none py-2 px-2"
-                  borderBottomWidth="1px"
-                >
-                  <Heading as="h2" size="md" className="text-black">
-                    {post.title}
-                  </Heading>
-                  <Text className="text-black">{post.content}</Text>
-                </Box>
+                  title={post.title}
+                  content={post.content}
+                  onClick={() => router.push(`/posts/${post.id}`)}
+                />
               ))}
             </VStack>
           ) : (

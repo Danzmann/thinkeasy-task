@@ -8,6 +8,8 @@ import axiosInstance, { setupAxiosInterceptors } from "@/api/axiosInstance";
 import { authTokenState, refreshTokenState } from "@/state/atoms";
 
 import "../styles/globals.css";
+import { useRouter } from "next/router";
+import Header from "@/components/Header";
 
 const AppInitializer = () => {
   const getAuthToken = useRecoilValue(authTokenState);
@@ -50,6 +52,15 @@ const AppInitializer = () => {
 };
 
 function MyApp({ Component, pageProps }: AppProps) {
+  const router = useRouter();
+
+  const handleLogout = () => {
+    localStorage.removeItem("refreshToken");
+    window.location.href = "/auth";
+  };
+
+  const isAuthPage = router.pathname === "/auth";
+
   return (
     <RecoilRoot>
       <ChakraProvider value={defaultSystem}>
@@ -57,6 +68,7 @@ function MyApp({ Component, pageProps }: AppProps) {
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
           <AppInitializer />
+          {!isAuthPage && <Header onLogout={handleLogout} />}
           <Component {...pageProps} />
         </div>
       </ChakraProvider>
