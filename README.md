@@ -48,3 +48,9 @@ This project is configured to use:
 package inflight@1.0.6 is outdated and leaks memory
 
 We are using pages routing instead of app routing
+
+Testing doesnt work with Chakra
+
+We are using recoil + localStorage for auth (refresh token), backend doesnt support cookies
+
+Refresh-token endpoint requires access token??? (why not use RRT + short lived access tokens)
