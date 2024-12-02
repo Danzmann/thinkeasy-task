@@ -70,7 +70,7 @@ const PostDetails = () => {
       <Button
         colorScheme="blue"
         onClick={() => router.push("/")}
-        className="mb-4"
+        className="my-4 ml-4"
       >
         Back
       </Button>

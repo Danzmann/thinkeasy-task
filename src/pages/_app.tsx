@@ -6,9 +6,11 @@ import { RecoilRoot, useRecoilValue, useSetRecoilState } from "recoil";
 import { geistSans, geistMono } from "@/theme/fonts";
 import { authTokenState, refreshTokenState } from "@/state/atoms";
 
-import "../styles/globals.css";
 import { useRouter } from "next/router";
 import Header from "@/components/Header";
+
+import "../styles/globals.css";
+import "react-toastify/dist/ReactToastify.css";
 
 const AppInitializer = () => {
   const authToken = useRecoilValue(authTokenState);

@@ -1,5 +1,5 @@
 import React, { ReactNode, useEffect, useState } from "react";
-import { Box, VStack, Text, Spinner } from "@chakra-ui/react";
+import { Box, VStack, Text, Spinner, Button } from "@chakra-ui/react";
 import {
   AutoComplete,
   AutoCompleteInput,
@@ -16,6 +16,7 @@ import withAuth from "@/components/withAuth";
 import PostCard from "@/components/PostCard";
 import { useApi } from "@/hooks/useApi";
 import { ENDPOINTS, METHODS } from "@/constants/api";
+import NewPostModal from "@/components/NewPostModal";
 
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -24,13 +25,18 @@ interface PostsInSearchField extends Post {
   highlightedContent?: ReactNode;
 }
 
+// Extends Post with isNew flag. Upon new Post creation, flag triggers a green-bg animation in PostCard.tsx
+interface PostsWithNewFlag extends Post {
+  isNew?: boolean;
+}
+
 const Home = () => {
   const { apiCall } = useApi();
   const authToken = useRecoilValue(authTokenState);
   const router = useRouter();
 
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [filteredPosts, setFilteredPosts] = useState<Post[]>([]);
+  const [posts, setPosts] = useState<PostsWithNewFlag[]>([]);
+  const [filteredPosts, setFilteredPosts] = useState<PostsWithNewFlag[]>([]);
   const [authors, setAuthors] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,14 +50,16 @@ const Home = () => {
     "Type at least 3 characters",
   );
 
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   const fetchAllPosts = async () => {
     setLoading(true);
     try {
       const fetchedPosts = await apiCall<Post[]>(ENDPOINTS.posts, METHODS.GET);
-      setPosts(fetchedPosts);
-      setFilteredPosts(fetchedPosts);
+      const publishedPosts = fetchedPosts.filter((post) => post.published);
+      setPosts(publishedPosts);
+      setFilteredPosts(publishedPosts);
 
-      // Extract unique authors from posts
       const uniqueAuthors = Array.from(
         new Set(fetchedPosts.map((post) => post.authorId)),
       );
@@ -87,7 +95,19 @@ const Home = () => {
   const resetFilters = async () => {
     setAuthorSearchQuery("");
     setTitleSearchQuery("");
-    await fetchAllPosts();
+    // await fetchAllPosts();
+    setFilteredPosts(posts);
+  };
+
+  const handleCreatePost = async (title: string, content: string) => {
+    const newPost = await apiCall<Post>(ENDPOINTS.posts, METHODS.POST, {
+      title,
+      content,
+    });
+    // const newPost = { title, content, createdAt: "", updatedAt: "", id: "12", authorId: "asd", published: true }
+    const postWithFlag = { ...newPost, isNew: true };
+    setPosts((prevPosts) => [postWithFlag, ...prevPosts]);
+    setFilteredPosts((prevPosts) => [postWithFlag, ...prevPosts]);
   };
 
   const handleSearchByContentOrTitle = (postId: string) => {
@@ -227,6 +247,13 @@ const Home = () => {
             >
               Reset Filters
             </Text>
+            <Button
+              mt={4}
+              colorScheme="green"
+              onClick={() => setIsModalOpen(true)}
+            >
+              New Post
+            </Button>
           </Box>
         </Box>
 
@@ -247,6 +274,7 @@ const Home = () => {
                   title={post.title}
                   content={post.content}
                   onClick={() => router.push(`/posts/${post.id}`)}
+                  isNew={post.isNew}
                 />
               ))}
             </VStack>
@@ -255,6 +283,12 @@ const Home = () => {
           )}
         </Box>
       </Box>
+
+      <NewPostModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onCreate={handleCreatePost}
+      />
     </Box>
   );
 };

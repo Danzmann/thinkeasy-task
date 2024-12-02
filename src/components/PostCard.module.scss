@@ -1,0 +1,15 @@
+@keyframes flash-green {
+  0% {
+    background-color: #d4f8d4;
+  }
+  75% {
+    background-color: #d4f8d4;
+  }
+  100% {
+    background-color: white;
+  }
+}
+
+.animateFlash {
+  animation: flash-green 5s ease-in-out forwards;
+}

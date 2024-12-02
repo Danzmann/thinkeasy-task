@@ -45,7 +45,7 @@ export const secureApiRequest = async <T>(
         // Use the refresh token to get a new access token
         const refreshTokenValue =
           getRefreshToken() || localStorage.getItem("refreshToken");
-        if (!refreshTokenValue) throw new Error("Refresh token missing");
+        if (!refreshTokenValue) throw "You have been logged out";
 
         const refreshedData = await refreshToken({ token: refreshTokenValue });
 
@@ -68,7 +68,7 @@ export const secureApiRequest = async <T>(
 
         return retryResponse.data;
       } catch (refreshError) {
-        console.error("Token refresh failed:", refreshError);
+        console.warn("Token refresh failed:", refreshError);
 
         // Handle failed refresh by logging out the user
         setAuthToken(null);
