@@ -56,6 +56,7 @@ const Home = () => {
     setLoading(true);
     try {
       const fetchedPosts = await apiCall<Post[]>(ENDPOINTS.posts, METHODS.GET);
+      // Ideally all posts from api should be in posts state, but since we are doing nothing with unpublished posts...
       const publishedPosts = fetchedPosts.filter((post) => post.published);
       setPosts(publishedPosts);
       setFilteredPosts(publishedPosts);
@@ -177,7 +178,6 @@ const Home = () => {
         {error && <Text color="red.500">{error}</Text>}
 
         <Box className="mb-4 p-4 bg-white rounded shadow-md">
-          {/* Search by Title or Content */}
           <Box className="mb-4">
             <Text mb={2}>Search by Title/Content:</Text>
             <AutoComplete
@@ -221,7 +221,6 @@ const Home = () => {
             </AutoComplete>
           </Box>
 
-          {/* Search by Author */}
           <Box>
             <Text mb={2}>Search by Author ID:</Text>
             <AutoComplete openOnFocus onSelectOption={handleSearchByAuthor}>
@@ -257,7 +256,6 @@ const Home = () => {
           </Box>
         </Box>
 
-        {/* Posts Section */}
         <Box
           className="h-[70vh] overflow-y-auto rounded shadow-md bg-gray-100 p-4"
           borderWidth="1px"

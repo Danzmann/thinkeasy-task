@@ -1,43 +1,60 @@
 import { useEffect } from "react";
 import { AppProps } from "next/app";
 import { ChakraProvider } from "@chakra-ui/react";
-import { RecoilRoot, useRecoilValue, useSetRecoilState } from "recoil";
+import { RecoilRoot, useSetRecoilState } from "recoil";
+import { useRouter } from "next/router";
 
 import { geistSans, geistMono } from "@/theme/fonts";
-import { authTokenState, refreshTokenState } from "@/state/atoms";
+import {
+  appLoadingState,
+  authTokenState,
+  refreshTokenState,
+  userInfoState,
+} from "@/state/atoms";
+import { refreshToken as getRefreshToken } from "@/api/auth";
 
-import { useRouter } from "next/router";
 import Header from "@/components/Header";
 
 import "../styles/globals.css";
 import "react-toastify/dist/ReactToastify.css";
 
 const AppInitializer = () => {
-  const authToken = useRecoilValue(authTokenState);
-  const refreshToken = useRecoilValue(refreshTokenState);
+  const router = useRouter();
+  // const authToken = useRecoilValue(authTokenState);
+  // const refreshToken = useRecoilValue(refreshTokenState);
+  const setAppLoading = useSetRecoilState(appLoadingState);
   const setAuthToken = useSetRecoilState(authTokenState);
   const setRefreshToken = useSetRecoilState(refreshTokenState);
+  const setUserInfo = useSetRecoilState(userInfoState);
 
   useEffect(() => {
     // :todo This is redundant since the refresh-token requires access token for some reason, but anyway it is here
     // Hydrate Recoil state with refresh token from localStorage
     const localRefreshToken = localStorage.getItem("refreshToken");
-    if (localRefreshToken) {
-      console.log("refresh:");
-      console.log(localRefreshToken);
+    const localAuthToken = localStorage.getItem("accessToken");
+    if (localRefreshToken && localAuthToken) {
       setRefreshToken(localRefreshToken);
 
+      setAppLoading(true);
       // Attempt to refresh the access token on app load
-      /*axiosInstance
-        .post("/auth/refresh-token", { token: refreshToken })
+      getRefreshToken({ authToken: localAuthToken, token: localRefreshToken })
         .then((response) => {
-          setAuthToken(response.data.access_token);
+          setAuthToken(response.access_token);
+          localStorage.setItem("accessToken", response.access_token);
+          // If the accessToken was in localStorage, userInfo will too
+          setUserInfo({ email: localStorage.getItem("userInfo") || "" });
+          setAppLoading(false);
+          router.replace("/");
         })
         .catch((error) => {
-          console.log("Failed to refresh token:", error);
+          console.log("Failed to refresh token: ", error);
           localStorage.removeItem("refreshToken");
+          localStorage.removeItem("accessToken");
+          setAppLoading(false);
           setRefreshToken(null);
-        });*/
+        });
+    } else {
+      setAppLoading(false);
     }
   }, []);
 
@@ -49,6 +66,7 @@ function MyApp({ Component, pageProps }: AppProps) {
 
   const handleLogout = () => {
     localStorage.removeItem("refreshToken");
+    localStorage.removeItem("accessToken");
     window.location.href = "/auth";
   };
 

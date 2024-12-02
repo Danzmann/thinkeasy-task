@@ -45,9 +45,18 @@ export const secureApiRequest = async <T>(
         // Use the refresh token to get a new access token
         const refreshTokenValue =
           getRefreshToken() || localStorage.getItem("refreshToken");
-        if (!refreshTokenValue) throw "You have been logged out";
+        const accessTokenValue = localStorage.getItem("accessToken");
+        if (!accessTokenValue) {
+          throw "You have been logged out";
+        }
+        if (!refreshTokenValue) {
+          throw "Failed to get refresh token";
+        }
 
-        const refreshedData = await refreshToken({ token: refreshTokenValue });
+        const refreshedData = await refreshToken({
+          authToken: accessTokenValue,
+          token: refreshTokenValue,
+        });
 
         setAuthToken(refreshedData.access_token);
 
@@ -74,6 +83,8 @@ export const secureApiRequest = async <T>(
         setAuthToken(null);
         setRefreshToken(null);
         localStorage.removeItem("refreshToken");
+        localStorage.removeItem("accessToken");
+        sessionStorage.setItem("userHasBeenLoggedOut", "true");
         window.location.href = "/auth";
         throw refreshError;
       }

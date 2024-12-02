@@ -25,3 +25,8 @@ export const currentUserPostsState = atom<Post[]>({
   key: "currentUserPostsState",
   default: [],
 });
+
+export const appLoadingState = atom<boolean>({
+  key: "appLoadingState",
+  default: true,
+});

@@ -18,5 +18,6 @@ export interface Auth {
 }
 
 export interface RefreshTokenInput {
+  authToken: string;
   token: string;
 }

@@ -11,9 +11,13 @@ const Header = ({ onLogout }: { onLogout: () => void }) => {
       className="p-4 bg-white shadow-md flex justify-between items-center text-black"
       as="header"
     >
-      <Heading as="h1" size="lg">
-        Welcome {userInfo.email}
-      </Heading>
+      {userInfo.email ? (
+        <Heading as="h1" size="lg">
+          Welcome {userInfo.email}
+        </Heading>
+      ) : (
+        <div></div>
+      )}
       <Button
         colorScheme="red"
         size="sm"
