@@ -1,75 +1,76 @@
-import React, { useEffect, useState } from "react";
+import React, { ReactNode, useEffect, useState } from "react";
+import { Box, VStack, Text, Spinner } from "@chakra-ui/react";
 import {
-  Box,
-  Button,
-  VStack,
-  Heading,
-  Text,
-  Input,
-  Spinner,
-} from "@chakra-ui/react";
+  AutoComplete,
+  AutoCompleteInput,
+  AutoCompleteItem,
+  AutoCompleteList,
+} from "@choc-ui/chakra-autocomplete";
 import { useRecoilValue } from "recoil";
 import { useRouter } from "next/router";
 
 import { Post } from "@/types/types";
-import { authTokenState, refreshTokenState } from "@/state/atoms";
+import { authTokenState } from "@/state/atoms";
 
 import withAuth from "@/components/withAuth";
 import PostCard from "@/components/PostCard";
 import { useApi } from "@/hooks/useApi";
 import { ENDPOINTS, METHODS } from "@/constants/api";
 
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+interface PostsInSearchField extends Post {
+  highlightedTitle?: ReactNode;
+  highlightedContent?: ReactNode;
+}
+
 const Home = () => {
   const { apiCall } = useApi();
-
   const authToken = useRecoilValue(authTokenState);
-  // const refreshToken = useRecoilValue(refreshTokenState);
-  // const userInfo = useRecoilValue(userInfoState);
-  const [posts, setPosts] = useState<Post[] | []>([]);
+  const router = useRouter();
+
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [filteredPosts, setFilteredPosts] = useState<Post[]>([]);
   const [authors, setAuthors] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [authorQuery, setAuthorQuery] = useState<string>("");
-  const router = useRouter();
 
-  // Fetch posts on load
-  useEffect(() => {
-    const loadPosts = async () => {
-      setLoading(true);
-      try {
-        const fetchedPosts = await apiCall<Post[]>(
-          ENDPOINTS.posts,
-          METHODS.GET,
-        );
-        setPosts(fetchedPosts);
+  const [authorSearchQuery, setAuthorSearchQuery] = useState("");
+  const [titleSearchQuery, setTitleSearchQuery] = useState("");
+  const [filteredPostsInSearch, setFilteredPostsInSearch] = useState<
+    PostsInSearchField[]
+  >([]);
+  const [noResultsText, setNoResultsText] = useState(
+    "Type at least 3 characters",
+  );
 
-        // Extract unique authors from the fetched posts
-        const uniqueAuthors = [
-          ...new Set(fetchedPosts.map((post: Post) => post.authorId)),
-        ];
-        setAuthors(uniqueAuthors);
-      } catch (error: any) {
-        setError(error.message);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchAllPosts = async () => {
+    setLoading(true);
+    try {
+      const fetchedPosts = await apiCall<Post[]>(ENDPOINTS.posts, METHODS.GET);
+      setPosts(fetchedPosts);
+      setFilteredPosts(fetchedPosts);
 
-    if (authToken) {
-      loadPosts();
+      // Extract unique authors from posts
+      const uniqueAuthors = Array.from(
+        new Set(fetchedPosts.map((post) => post.authorId)),
+      );
+      setAuthors(uniqueAuthors);
+    } catch (error: any) {
+      setError(error.message);
+    } finally {
+      setLoading(false);
     }
-  }, [authToken]);
+  };
 
-  // Fetch user-specific posts
-  const handleAuthorSearch = async (authorId: string) => {
+  const searchByAuthor = async (authorId: string) => {
     setLoading(true);
     try {
       const userPosts = await apiCall<Post[]>(
         ENDPOINTS.postsByUser(authorId),
         METHODS.GET,
       );
-      setPosts(userPosts);
+      setFilteredPosts(userPosts);
     } catch (error: any) {
       setError(error.message);
     } finally {
@@ -77,93 +78,159 @@ const Home = () => {
     }
   };
 
-  // Reset to all posts
-  const resetPosts = async () => {
-    setLoading(true);
-    try {
-      const fetchedPosts = await apiCall<Post[]>(ENDPOINTS.posts, METHODS.GET);
-      setPosts(fetchedPosts);
-      setAuthorQuery("");
-    } catch (error: any) {
-      setError(error.message);
-    } finally {
-      setLoading(false);
-    }
+  const handleSearchByAuthor = (item) => {
+    const authorId = item.item.value;
+    searchByAuthor(authorId);
+    setAuthorSearchQuery(authorId);
   };
+
+  const resetFilters = async () => {
+    setAuthorSearchQuery("");
+    setTitleSearchQuery("");
+    await fetchAllPosts();
+  };
+
+  const handleSearchByContentOrTitle = (postId: string) => {
+    router.push(`/posts/${postId}`);
+  };
+
+  // When searching posts by title or content, the matching part will be highlighted
+  const highlightMatch = (text: string, query: string) => {
+    const parts = text.split(new RegExp(`(${query})`, "gi"));
+    return parts.map((part, index) =>
+      part.toLowerCase() === query.toLowerCase() ? (
+        <b key={index} className="text-blue-500">
+          {part}
+        </b>
+      ) : (
+        part
+      ),
+    );
+  };
+
+  // Fetch all posts on component mount
+  useEffect(() => {
+    if (authToken) {
+      fetchAllPosts();
+    }
+  }, []);
+
+  useEffect(() => {
+    if (titleSearchQuery.length < 3) {
+      setFilteredPostsInSearch([]);
+      setNoResultsText("Type at least 3 characters");
+      return;
+    }
+
+    // Filter the posts by content or title
+    // Debounce to not perform calculation on every type
+    if (debounceTimer) clearTimeout(debounceTimer);
+    setNoResultsText("Searching...");
+    debounceTimer = setTimeout(() => {
+      const filtered = posts
+        .filter(
+          (post) =>
+            post.title.toLowerCase().includes(titleSearchQuery.toLowerCase()) ||
+            post.content.toLowerCase().includes(titleSearchQuery.toLowerCase()),
+        )
+        .map((post) => ({
+          ...post,
+          // Display matching part of title/content highlighted
+          highlightedTitle: highlightMatch(post.title, titleSearchQuery),
+          highlightedContent: highlightMatch(
+            post.content.slice(0, 100) +
+              (post.content.length > 100 ? "..." : ""),
+            titleSearchQuery,
+          ),
+        }));
+      setFilteredPostsInSearch(filtered);
+      if (filtered.length === 0) setNoResultsText("No Results");
+    }, 600);
+  }, [titleSearchQuery]);
 
   return (
-    <Box className="flex flex-col min-h-screen bg-gray-50 text-black">
-      {/* Main Content */}
+    <Box
+      className="flex flex-col min-h-screen bg-gray-50 text-black fixed w-full"
+      style={{ minWidth: "100vw" }}
+    >
       <Box as="main" className="flex-grow p-4">
         {error && <Text color="red.500">{error}</Text>}
 
-        <Box className="mb-4 p-4 bg-white rounded shadow-md" borderWidth="1px">
-          {/* Search by title/content */}
+        <Box className="mb-4 p-4 bg-white rounded shadow-md">
+          {/* Search by Title or Content */}
           <Box className="mb-4">
-            <Input
-              placeholder="Search posts by title or content..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              list="search-results"
-              className="mb-2"
-            />
-            <datalist id="search-results">
-              {searchQuery.length >= 3 &&
-                posts.length > 0 &&
-                posts
-                  .filter(
-                    (post) =>
-                      post.title.includes(searchQuery) ||
-                      post.content.includes(searchQuery),
-                  )
-                  .map((post) => (
-                    <option key={post.id} value={post.title}>
-                      {post.title}
-                    </option>
-                  ))}
-            </datalist>
+            <Text mb={2}>Search by Title/Content:</Text>
+            <AutoComplete
+              openOnFocus
+              // We are using a custom find algorithm
+              disableFilter={true}
+              onSelectOption={(item) => {
+                handleSearchByContentOrTitle(item.item.value);
+              }}
+            >
+              <AutoCompleteInput
+                placeholder="Search posts by title or content..."
+                className="min-w-5"
+                value={titleSearchQuery}
+                onChange={(el) => setTitleSearchQuery(el.target.value)}
+              />
+              <AutoCompleteList>
+                {filteredPostsInSearch.length > 0 ? (
+                  filteredPostsInSearch.map((post) => (
+                    <AutoCompleteItem key={post.id} value={post.id}>
+                      <div>
+                        <Text fontWeight="bold">{post.highlightedTitle}</Text>
+                        <Text fontSize="sm" color="gray.600">
+                          {post.highlightedContent}
+                        </Text>
+                      </div>
+                    </AutoCompleteItem>
+                  ))
+                ) : (
+                  <AutoCompleteItem
+                    value={0}
+                    disabled
+                    className="w-full d-flex justify-center text-center bg-white"
+                  >
+                    <Text align="center bg-white text-bold">
+                      {noResultsText}
+                    </Text>
+                  </AutoCompleteItem>
+                )}
+              </AutoCompleteList>
+            </AutoComplete>
           </Box>
 
-          {/* Search by authorId */}
+          {/* Search by Author */}
           <Box>
-            <Input
-              placeholder="Search posts by author ID..."
-              value={authorQuery}
-              onChange={(e) => setAuthorQuery(e.target.value)}
-              list="author-results"
-              className="mb-2"
-            />
-            <datalist id="author-results">
-              {authors
-                .filter((authorId) =>
-                  authorId.toLowerCase().includes(authorQuery.toLowerCase()),
-                )
-                .map((authorId) => (
-                  <option key={authorId} value={authorId}>
+            <Text mb={2}>Search by Author ID:</Text>
+            <AutoComplete openOnFocus onSelectOption={handleSearchByAuthor}>
+              <AutoCompleteInput
+                placeholder="Search posts by author ID..."
+                className="min-w-5"
+                value={authorSearchQuery}
+                onChange={(el) => setAuthorSearchQuery(el.target.value)}
+              />
+              <AutoCompleteList>
+                {authors.map((authorId) => (
+                  <AutoCompleteItem key={authorId} value={authorId}>
                     {authorId}
-                  </option>
+                  </AutoCompleteItem>
                 ))}
-            </datalist>
-            <Button
-              colorScheme="blue"
-              onClick={() => handleAuthorSearch(authorQuery)}
-              className="ml-2"
-              isDisabled={!authorQuery}
+              </AutoCompleteList>
+            </AutoComplete>
+            <Text
+              mt={2}
+              color="blue.500"
+              onClick={resetFilters}
+              className="cursor-pointer hover:underline"
             >
-              Search by Author
-            </Button>
-            <Button
-              colorScheme="gray"
-              variant="outline"
-              onClick={resetPosts}
-              className="ml-2"
-            >
-              Reset
-            </Button>
+              Reset Filters
+            </Text>
           </Box>
         </Box>
 
-        {/* Post List */}
+        {/* Posts Section */}
         <Box
           className="h-[70vh] overflow-y-auto rounded shadow-md bg-gray-100 p-4"
           borderWidth="1px"
@@ -172,9 +239,9 @@ const Home = () => {
             <Box className="flex justify-center items-center">
               <Spinner size="lg" />
             </Box>
-          ) : posts.length > 0 ? (
+          ) : filteredPosts.length > 0 ? (
             <VStack spacing={4} align="stretch">
-              {posts.map((post: Post) => (
+              {filteredPosts.map((post) => (
                 <PostCard
                   key={post.id}
                   title={post.title}

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { AppProps } from "next/app";
-import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
+import { ChakraProvider } from "@chakra-ui/react";
 import { RecoilRoot, useRecoilValue, useSetRecoilState } from "recoil";
 
 import { geistSans, geistMono } from "@/theme/fonts";
@@ -54,7 +54,7 @@ function MyApp({ Component, pageProps }: AppProps) {
 
   return (
     <RecoilRoot>
-      <ChakraProvider value={defaultSystem}>
+      <ChakraProvider>
         <div
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
