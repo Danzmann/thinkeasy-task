@@ -6,6 +6,7 @@ import {
   AutoCompleteItem,
   AutoCompleteList,
 } from "@choc-ui/chakra-autocomplete";
+import { List, AutoSizer } from "react-virtualized";
 import { useRecoilValue } from "recoil";
 import { useRouter } from "next/router";
 
@@ -152,6 +153,20 @@ const Home = () => {
     );
   };
 
+  const rowRenderer = ({ index, key, style }: any) => {
+    const post = filteredPosts[index];
+    return (
+      <div key={key} style={style}>
+        <PostCard
+          title={post.title}
+          content={post.content}
+          onClick={() => router.push(`/posts/${post.id}`)}
+          isNew={post.isNew}
+        />
+      </div>
+    );
+  };
+
   // Fetch all posts on component mount
   useEffect(() => {
     if (authToken) {
@@ -276,7 +291,7 @@ const Home = () => {
         </Box>
 
         <Box
-          className="h-[70vh] overflow-y-auto rounded shadow-md bg-gray-100 p-4"
+          className="h-[52vh] overflow-y-hidden rounded shadow-md bg-gray-100 p-4"
           borderWidth="1px"
         >
           {loading ? (
@@ -284,16 +299,18 @@ const Home = () => {
               <Spinner size="lg" />
             </Box>
           ) : filteredPosts.length > 0 ? (
-            <VStack spacing={4} align="stretch">
-              {filteredPosts.map((post) => (
-                <PostCard
-                  key={post.id}
-                  title={post.title}
-                  content={post.content}
-                  onClick={() => router.push(`/posts/${post.id}`)}
-                  isNew={post.isNew}
-                />
-              ))}
+            <VStack spacing={4} align="stretch" minHeight={600}>
+              <AutoSizer>
+                {({ height, width }) => (
+                  <List
+                    width={width}
+                    height={height}
+                    rowHeight={100}
+                    rowCount={filteredPosts.length}
+                    rowRenderer={rowRenderer}
+                  />
+                )}
+              </AutoSizer>
             </VStack>
           ) : (
             <Text className="text-black">No posts available.</Text>

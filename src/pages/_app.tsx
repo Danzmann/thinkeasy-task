@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { AppProps } from "next/app";
 import { ChakraProvider } from "@chakra-ui/react";
-import { RecoilRoot, useSetRecoilState } from "recoil";
+import { RecoilRoot, useSetRecoilState, useRecoilValue } from "recoil";
 import { useRouter } from "next/router";
 
 import { geistSans, geistMono } from "@/theme/fonts";
@@ -27,6 +27,7 @@ const AppInitializer = () => {
   const router = useRouter();
   const setAppLoading = useSetRecoilState(appLoadingState);
   const setAuthToken = useSetRecoilState(authTokenState);
+  const getAuthTokenState = useRecoilValue(authTokenState);
   const setRefreshToken = useSetRecoilState(refreshTokenState);
   const setUserInfo = useSetRecoilState(userInfoState);
 
@@ -59,6 +60,11 @@ const AppInitializer = () => {
           setRefreshToken(null);
           setAuthToken(null);
         });
+    } else if (!getAuthTokenState) {
+      deleteLocalStorage();
+      setAppLoading(false);
+      setRefreshToken(null);
+      setAuthToken(null);
     } else {
       setAppLoading(false);
     }
