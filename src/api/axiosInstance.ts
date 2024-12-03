@@ -1,6 +1,10 @@
 import axios from "axios";
 import { refreshToken } from "@/api/auth";
 import { handleApiError } from "@/api/errorHandler";
+import {
+  deleteLocalStorage,
+  getLocalStorage,
+} from "@/utils/localStorageHandler";
 
 const BASE_URL = "https://frontend-test-be.stage.thinkeasy.cz";
 
@@ -42,10 +46,12 @@ export const secureApiRequest = async <T>(
   } catch (error: any) {
     if (error.response?.status === 401) {
       try {
+        const {
+          accessToken: accessTokenValue,
+          refreshToken: refreshTokenValue,
+        } = getLocalStorage();
         // Use the refresh token to get a new access token
-        const refreshTokenValue =
-          getRefreshToken() || localStorage.getItem("refreshToken");
-        const accessTokenValue = localStorage.getItem("accessToken");
+
         if (!accessTokenValue) {
           throw "You have been logged out";
         }
@@ -59,10 +65,6 @@ export const secureApiRequest = async <T>(
         });
 
         setAuthToken(refreshedData.access_token);
-
-        if (localStorage.getItem("refreshToken")) {
-          localStorage.setItem("refreshToken", refreshTokenValue);
-        }
 
         // Retry the original request with the new access token
         const retryResponse = await axiosInstance.request<T>({
@@ -82,8 +84,7 @@ export const secureApiRequest = async <T>(
         // Handle failed refresh by logging out the user
         setAuthToken(null);
         setRefreshToken(null);
-        localStorage.removeItem("refreshToken");
-        localStorage.removeItem("accessToken");
+        deleteLocalStorage();
         sessionStorage.setItem("userHasBeenLoggedOut", "true");
         window.location.href = "/auth";
         throw refreshError;

@@ -12,6 +12,11 @@ import {
   userInfoState,
 } from "@/state/atoms";
 import { refreshToken as getRefreshToken } from "@/api/auth";
+import {
+  deleteLocalStorage,
+  getLocalStorage,
+  setLocalStorage,
+} from "@/utils/localStorageHandler";
 
 import Header from "@/components/Header";
 
@@ -20,18 +25,19 @@ import "react-toastify/dist/ReactToastify.css";
 
 const AppInitializer = () => {
   const router = useRouter();
-  // const authToken = useRecoilValue(authTokenState);
-  // const refreshToken = useRecoilValue(refreshTokenState);
   const setAppLoading = useSetRecoilState(appLoadingState);
   const setAuthToken = useSetRecoilState(authTokenState);
   const setRefreshToken = useSetRecoilState(refreshTokenState);
   const setUserInfo = useSetRecoilState(userInfoState);
 
   useEffect(() => {
-    // :todo This is redundant since the refresh-token requires access token for some reason, but anyway it is here
     // Hydrate Recoil state with refresh token from localStorage
-    const localRefreshToken = localStorage.getItem("refreshToken");
-    const localAuthToken = localStorage.getItem("accessToken");
+    const {
+      accessToken: localAuthToken,
+      refreshToken: localRefreshToken,
+      userInfo,
+    } = getLocalStorage();
+
     if (localRefreshToken && localAuthToken) {
       setRefreshToken(localRefreshToken);
 
@@ -40,18 +46,18 @@ const AppInitializer = () => {
       getRefreshToken({ authToken: localAuthToken, token: localRefreshToken })
         .then((response) => {
           setAuthToken(response.access_token);
-          localStorage.setItem("accessToken", response.access_token);
+          setLocalStorage({ accessToken: response.access_token });
           // If the accessToken was in localStorage, userInfo will too
-          setUserInfo({ email: localStorage.getItem("userInfo") || "" });
+          setUserInfo({ email: userInfo || "" });
           setAppLoading(false);
           router.replace("/");
         })
         .catch((error) => {
           console.log("Failed to refresh token: ", error);
-          localStorage.removeItem("refreshToken");
-          localStorage.removeItem("accessToken");
+          deleteLocalStorage();
           setAppLoading(false);
           setRefreshToken(null);
+          setAuthToken(null);
         });
     } else {
       setAppLoading(false);
@@ -65,8 +71,7 @@ function MyApp({ Component, pageProps }: AppProps) {
   const router = useRouter();
 
   const handleLogout = () => {
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("accessToken");
+    deleteLocalStorage();
     window.location.href = "/auth";
   };
 

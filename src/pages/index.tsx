@@ -117,8 +117,20 @@ const Home = () => {
 
   // When searching posts by title or content, the matching part will be highlighted
   const highlightMatch = (text: string, query: string) => {
-    const parts = text.split(new RegExp(`(${query})`, "gi"));
-    return parts.map((part, index) =>
+    const matchIndex = text.toLowerCase().indexOf(query.toLowerCase());
+
+    if (matchIndex === -1) {
+      return text;
+    }
+
+    // Define the snippet range around the match and slice it
+    const snippetStart = Math.max(0, matchIndex - 50);
+    const snippetEnd = Math.min(text.length, matchIndex + 50 + query.length);
+    const snippet = text.slice(snippetStart, snippetEnd);
+
+    // Highlight the matching part in the snippet
+    const parts = snippet.split(new RegExp(`(${query})`, "gi"));
+    const highlightedSnippet = parts.map((part, index) =>
       part.toLowerCase() === query.toLowerCase() ? (
         <b key={index} className="text-blue-500">
           {part}
@@ -126,6 +138,17 @@ const Home = () => {
       ) : (
         part
       ),
+    );
+
+    const addEllipsisStart = snippetStart > 0;
+    const addEllipsisEnd = snippetEnd < text.length;
+
+    return (
+      <>
+        {addEllipsisStart && "..."}
+        {highlightedSnippet}
+        {addEllipsisEnd && "..."}
+      </>
     );
   };
 
@@ -158,11 +181,7 @@ const Home = () => {
           ...post,
           // Display matching part of title/content highlighted
           highlightedTitle: highlightMatch(post.title, titleSearchQuery),
-          highlightedContent: highlightMatch(
-            post.content.slice(0, 100) +
-              (post.content.length > 100 ? "..." : ""),
-            titleSearchQuery,
-          ),
+          highlightedContent: highlightMatch(post.content, titleSearchQuery),
         }));
       setFilteredPostsInSearch(filtered);
       if (filtered.length === 0) setNoResultsText("No Results");

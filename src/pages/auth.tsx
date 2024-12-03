@@ -3,12 +3,6 @@ import { useSetRecoilState } from "recoil";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/router";
 import {
-  authTokenState,
-  refreshTokenState,
-  userInfoState,
-} from "@/state/atoms";
-import { signup, login } from "@/api/auth";
-import {
   Button,
   Input,
   Box,
@@ -21,13 +15,23 @@ import {
   TabPanels,
   FormControl,
   FormErrorMessage,
-  FormHelperText,
 } from "@chakra-ui/react";
 import { ToastContainer, toast } from "react-toastify";
 
+import {
+  authTokenState,
+  refreshTokenState,
+  userInfoState,
+} from "@/state/atoms";
+import { signup, login } from "@/api/auth";
+import {
+  deleteLocalStorage,
+  setLocalStorage,
+} from "@/utils/localStorageHandler";
+
 const AuthPage = () => {
   const signupForm = useForm({
-    mode: "onSubmit", // Run validation on form submission
+    mode: "onSubmit",
   });
   const loginForm = useForm({
     mode: "onSubmit",
@@ -56,21 +60,21 @@ const AuthPage = () => {
       setRefreshToken(authData.refreshToken);
 
       if (rememberMe) {
-        localStorage.setItem("accessToken", authData.accessToken);
-        localStorage.setItem("refreshToken", authData.refreshToken);
-        // There is no api to fetch user data so here it is, the DIY version :D
-        localStorage.setItem("userInfo", data.email);
+        setLocalStorage({
+          accessToken: authData.accessToken,
+          refreshToken: authData.refreshToken,
+          // There is no api to fetch user data so here it is, the DIY version :D
+          userInfo: data.email,
+        });
       } else {
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
-        localStorage.removeItem("userInfo");
+        deleteLocalStorage();
       }
 
       setUserInfo({ email: data.email });
       router.push("/");
     } catch (error: any) {
       let errorMessage = "An error occurred. Please try again.";
-      // Password too short error message comes as an array for some reason
+      // Some errors come as an array
       if (error.message && Array.isArray(error.message)) {
         errorMessage = error.message.join(", ");
       } else if (error.message) {
