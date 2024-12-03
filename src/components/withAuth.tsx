@@ -15,7 +15,7 @@ const withAuth = (WrappedComponent: React.ComponentType) => {
       if (!authToken && !appLoading) {
         router.replace("/auth");
       }
-    }, [authToken, router]);
+    }, [authToken]);
 
     // App loading is called during fetching credentials on app initialization (_app.tsx)
     if (appLoading) {

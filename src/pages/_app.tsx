@@ -50,7 +50,7 @@ const AppInitializer = () => {
           // If the accessToken was in localStorage, userInfo will too
           setUserInfo({ email: userInfo || "" });
           setAppLoading(false);
-          router.replace("/");
+          if (router.pathname.includes("/auth")) router.replace("/");
         })
         .catch((error) => {
           console.log("Failed to refresh token: ", error);

@@ -1,79 +1,102 @@
 import React, { useEffect, useState } from "react";
+import { Box, Text, Spinner, VStack, Button } from "@chakra-ui/react";
 import { useRouter } from "next/router";
-import { Box, Heading, Text, Spinner, Button } from "@chakra-ui/react";
-
-import { Post } from "@/types/types";
 import { useApi } from "@/hooks/useApi";
 import { ENDPOINTS, METHODS } from "@/constants/api";
+import { Post } from "@/types/types";
+import { format } from "date-fns";
 import withAuth from "@/components/withAuth";
 
 const PostDetails = () => {
   const router = useRouter();
+  const { apiCall } = useApi();
   const { id } = router.query;
 
-  const { apiCall } = useApi();
-
   const [post, setPost] = useState<Post | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const loadPost = async () => {
-      if (id) {
+    if (id) {
+      const fetchPost = async () => {
+        setLoading(true);
         try {
-          setLoading(true);
           const fetchedPost = await apiCall<Post>(
             ENDPOINTS.postById(id as string),
             METHODS.GET,
           );
           setPost(fetchedPost);
         } catch (error: any) {
-          setError(error.message || "Failed to load post.");
+          setError(error.message);
         } finally {
           setLoading(false);
         }
-      }
-    };
+      };
 
-    loadPost();
+      fetchPost();
+    }
   }, [id]);
 
-  if (loading) {
-    return (
-      <Box className="flex items-center justify-center min-h-screen">
-        <Spinner size="xl" color="blue.500" />
-      </Box>
-    );
-  }
-
-  if (error) {
-    return (
-      <Box className="flex items-center justify-center min-h-screen">
-        <Text color="red.500">{error}</Text>
-      </Box>
-    );
-  }
+  const formatDate = (dateString: string) => {
+    return format(new Date(dateString), "PPPpp"); // Format as "Jan 1, 2024, 1:00 PM"
+  };
 
   return (
-    <Box className="p-4 min-h-screen bg-gray-50 text-black">
-      {post ? (
-        <Box className="max-w-4xl mx-auto bg-white shadow-md p-6 rounded-md">
-          <Heading as="h1" size="xl" className="text-black mb-4">
-            {post.title}
-          </Heading>
-          <Text className="text-gray-700">{post.content}</Text>
+    <Box className="min-h-screen bg-gray-50 text-black p-4">
+      {loading ? (
+        <Box className="flex justify-center items-center h-full">
+          <Spinner size="lg" />
         </Box>
+      ) : error ? (
+        <Text color="red.500">{error}</Text>
+      ) : post ? (
+        <VStack
+          className="bg-white rounded shadow-md p-6"
+          spacing={4}
+          align="stretch"
+        >
+          <Text fontSize="xl" fontWeight="bold">
+            {post.title}
+          </Text>
+          <Text>{post.content}</Text>
+          <Text fontSize="sm" color="gray.600">
+            Created: {formatDate(post.createdAt)}
+          </Text>
+          <Text fontSize="sm" color="gray.600">
+            Updated: {formatDate(post.updatedAt)}
+          </Text>
+          <Text fontSize="sm" color="gray.600">
+            Author: {post.authorId}
+          </Text>
+          <Button
+            colorScheme="blue"
+            onClick={() => router.push("/")}
+            alignSelf="flex-start"
+          >
+            Back to Home
+          </Button>
+        </VStack>
       ) : (
-        <Text className="text-black">Post not found.</Text>
+        <VStack
+          className="bg-white rounded shadow-md p-6 text-center"
+          spacing={4}
+          align="center"
+        >
+          <Text fontSize="2xl" fontWeight="bold">
+            Post Not Found
+          </Text>
+          <Text fontSize="md" color="gray.600">
+            The post you are looking for doesn’t exist or may have been removed.
+          </Text>
+          <Button
+            colorScheme="blue"
+            onClick={() => router.push("/")}
+            alignSelf="center"
+          >
+            Back to Home
+          </Button>
+        </VStack>
       )}
-
-      <Button
-        colorScheme="blue"
-        onClick={() => router.push("/")}
-        className="my-4 ml-4"
-      >
-        Back
-      </Button>
     </Box>
   );
 };

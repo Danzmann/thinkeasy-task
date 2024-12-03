@@ -6,7 +6,7 @@ import {
   getLocalStorage,
 } from "@/utils/localStorageHandler";
 
-const BASE_URL = "https://frontend-test-be.stage.thinkeasy.cz";
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 const axiosInstance = axios.create({
   baseURL: BASE_URL,
