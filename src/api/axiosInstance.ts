@@ -1,7 +1,10 @@
 import axios from "axios";
-// import { authTokenState, refreshTokenState } from "@/state/atoms";
 import { refreshToken } from "@/api/auth";
-// import { RecoilState, RecoilValue, useSetRecoilState } from "recoil";
+import { handleApiError } from "@/api/errorHandler";
+import {
+  deleteLocalStorage,
+  getLocalStorage,
+} from "@/utils/localStorageHandler";
 
 const BASE_URL = "https://frontend-test-be.stage.thinkeasy.cz";
 
@@ -12,73 +15,84 @@ const axiosInstance = axios.create({
   },
 });
 
-// Ignore the auth endpoints when automatically attaching access_token to requests
-// :todo refresh-token requires access_token for some reason
-const excludedEndpoints = [
-  "/auth/login",
-  "/auth/signup" /*, "/auth/refresh-token"*/,
-];
-
-export const setupAxiosInterceptors = (
-  getAuthToken: () => string | null,
+/**
+ * Secure API Request Helper
+ * Handles authenticated API calls, refresh token logic, and error handling.
+ */
+export const secureApiRequest = async <T>(
+  endpoint: string,
+  method: "GET" | "POST" | "PUT" | "DELETE",
+  data: any = null,
+  authToken: string | null,
   getRefreshToken: () => string | null,
   setAuthToken: (token: string | null) => void,
   setRefreshToken: (token: string | null) => void,
-) => {
-  axiosInstance.interceptors.request.use(
-    (config) => {
-      // Skip adding Authorization header for excluded endpoints
-      if (
-        excludedEndpoints.some((endpoint) => config.url?.includes(endpoint))
-      ) {
-        return config;
-      }
+): Promise<T> => {
+  const headers: Record<string, string> = {};
+  try {
+    if (authToken) {
+      headers.Authorization = `Bearer ${authToken}`;
+    }
 
-      const token = getAuthToken();
-      if (token && config.headers) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-      return config;
-    },
-    (error) => Promise.reject(error),
-  );
+    //@ts-ignore
+    const response = await axiosInstance.request<T>({
+      url: endpoint,
+      method,
+      data,
+      headers,
+    });
 
-  axiosInstance.interceptors.response.use(
-    (response) => response,
-    async (error) => {
-      const originalRequest = error.config;
+    return response.data;
+  } catch (error: any) {
+    if (error.response?.status === 401) {
+      try {
+        const {
+          accessToken: accessTokenValue,
+          refreshToken: refreshTokenValue,
+        } = getLocalStorage();
+        // Use the refresh token to get a new access token
 
-      if (error.response?.status === 401 && !originalRequest._retry) {
-        originalRequest._retry = true;
-
-        try {
-          const refreshTokenValue =
-            getRefreshToken() || localStorage.getItem("refreshToken");
-          // :todo log out user instead of crashing everything
-          if (!refreshTokenValue) throw new Error("Refresh token missing");
-
-          const refreshedData = await refreshToken({
-            token: refreshTokenValue,
-          });
-
-          setAuthToken(refreshedData.access_token);
-
-          originalRequest.headers.Authorization = `Bearer ${refreshedData.access_token}`;
-          return axiosInstance(originalRequest);
-        } catch (refreshError) {
-          console.error("Token refresh failed:", refreshError);
-
-          setAuthToken(null);
-          setRefreshToken(null);
-          localStorage.removeItem("refreshToken");
-          window.location.href = "/login";
-          return Promise.reject(refreshError);
+        if (!accessTokenValue) {
+          throw "You have been logged out";
         }
-      }
+        if (!refreshTokenValue) {
+          throw "Failed to get refresh token";
+        }
 
-      return Promise.reject(error);
-    },
-  );
+        const refreshedData = await refreshToken({
+          authToken: accessTokenValue,
+          token: refreshTokenValue,
+        });
+
+        setAuthToken(refreshedData.access_token);
+
+        // Retry the original request with the new access token
+        const retryResponse = await axiosInstance.request<T>({
+          url: endpoint,
+          method,
+          data,
+          headers: {
+            ...headers,
+            Authorization: `Bearer ${refreshedData.access_token}`,
+          },
+        });
+
+        return retryResponse.data;
+      } catch (refreshError) {
+        console.warn("Token refresh failed:", refreshError);
+
+        // Handle failed refresh by logging out the user
+        setAuthToken(null);
+        setRefreshToken(null);
+        deleteLocalStorage();
+        sessionStorage.setItem("userHasBeenLoggedOut", "true");
+        window.location.href = "/auth";
+        throw refreshError;
+      }
+    }
+
+    handleApiError(error);
+  }
 };
 
 export default axiosInstance;

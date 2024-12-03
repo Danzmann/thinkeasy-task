@@ -1,62 +1,90 @@
 import { useEffect } from "react";
 import { AppProps } from "next/app";
-import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
-import { RecoilRoot, useRecoilValue, useSetRecoilState } from "recoil";
+import { ChakraProvider } from "@chakra-ui/react";
+import { RecoilRoot, useSetRecoilState } from "recoil";
+import { useRouter } from "next/router";
 
 import { geistSans, geistMono } from "@/theme/fonts";
-import axiosInstance, { setupAxiosInterceptors } from "@/api/axiosInstance";
-import { authTokenState, refreshTokenState } from "@/state/atoms";
+import {
+  appLoadingState,
+  authTokenState,
+  refreshTokenState,
+  userInfoState,
+} from "@/state/atoms";
+import { refreshToken as getRefreshToken } from "@/api/auth";
+import {
+  deleteLocalStorage,
+  getLocalStorage,
+  setLocalStorage,
+} from "@/utils/localStorageHandler";
+
+import Header from "@/components/Header";
 
 import "../styles/globals.css";
+import "react-toastify/dist/ReactToastify.css";
 
 const AppInitializer = () => {
-  const getAuthToken = useRecoilValue(authTokenState);
-  const getRefreshToken = useRecoilValue(refreshTokenState);
+  const router = useRouter();
+  const setAppLoading = useSetRecoilState(appLoadingState);
   const setAuthToken = useSetRecoilState(authTokenState);
   const setRefreshToken = useSetRecoilState(refreshTokenState);
+  const setUserInfo = useSetRecoilState(userInfoState);
 
   useEffect(() => {
-    // :todo This is redundant since the refresh-token requires access token for some reason, but anyway it is here
     // Hydrate Recoil state with refresh token from localStorage
-    const refreshToken = localStorage.getItem("refreshToken");
-    if (refreshToken) {
-      console.log("refresh:");
-      console.log(refreshToken);
-      setRefreshToken(refreshToken);
+    const {
+      accessToken: localAuthToken,
+      refreshToken: localRefreshToken,
+      userInfo,
+    } = getLocalStorage();
 
+    if (localRefreshToken && localAuthToken) {
+      setRefreshToken(localRefreshToken);
+
+      setAppLoading(true);
       // Attempt to refresh the access token on app load
-      axiosInstance
-        .post("/auth/refresh-token", { token: refreshToken })
+      getRefreshToken({ authToken: localAuthToken, token: localRefreshToken })
         .then((response) => {
-          setAuthToken(response.data.access_token);
+          setAuthToken(response.access_token);
+          setLocalStorage({ accessToken: response.access_token });
+          // If the accessToken was in localStorage, userInfo will too
+          setUserInfo({ email: userInfo || "" });
+          setAppLoading(false);
+          router.replace("/");
         })
         .catch((error) => {
-          console.log("Failed to refresh token:", error);
-          localStorage.removeItem("refreshToken");
+          console.log("Failed to refresh token: ", error);
+          deleteLocalStorage();
+          setAppLoading(false);
           setRefreshToken(null);
+          setAuthToken(null);
         });
+    } else {
+      setAppLoading(false);
     }
-
-    // Initialize Axios interceptors
-    setupAxiosInterceptors(
-      () => getAuthToken,
-      () => getRefreshToken,
-      setAuthToken,
-      setRefreshToken,
-    );
   }, []);
 
   return null;
 };
 
 function MyApp({ Component, pageProps }: AppProps) {
+  const router = useRouter();
+
+  const handleLogout = () => {
+    deleteLocalStorage();
+    window.location.href = "/auth";
+  };
+
+  const isAuthPage = router.pathname === "/auth";
+
   return (
     <RecoilRoot>
-      <ChakraProvider value={defaultSystem}>
+      <ChakraProvider>
         <div
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
           <AppInitializer />
+          {!isAuthPage && <Header onLogout={handleLogout} />}
           <Component {...pageProps} />
         </div>
       </ChakraProvider>
