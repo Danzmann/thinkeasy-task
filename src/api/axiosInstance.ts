@@ -5,6 +5,7 @@ import {
   deleteLocalStorage,
   getLocalStorage,
 } from "@/utils/localStorageHandler";
+import { NewPost } from "@/types/types";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -22,7 +23,7 @@ const axiosInstance = axios.create({
 export const secureApiRequest = async <T>(
   endpoint: string,
   method: "GET" | "POST" | "PUT" | "DELETE",
-  data: any = null,
+  data: NewPost | null = null,
   authToken: string | null,
   getRefreshToken: () => string | null,
   setAuthToken: (token: string | null) => void,
