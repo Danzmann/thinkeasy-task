@@ -1,6 +1,7 @@
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { authTokenState, refreshTokenState } from "@/state/atoms";
 import { secureApiRequest } from "@/api/axiosInstance";
+import { NewPost } from "@/types/types";
 
 export const useApi = () => {
   const authToken = useRecoilValue(authTokenState);
@@ -11,7 +12,7 @@ export const useApi = () => {
   const apiCall = async <T>(
     endpoint: string,
     method: "GET" | "POST" | "PUT" | "DELETE",
-    data: any = null
+    data: NewPost | null = null
   ): Promise<T> => {
     return secureApiRequest<T>(
       endpoint,

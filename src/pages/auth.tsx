@@ -110,7 +110,7 @@ const AuthPage = () => {
   }, []);
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100 text-black">
+    <div className="flex items-center justify-center min-h-screen text-black">
       <Box className="w-full max-w-md bg-white p-6 rounded-md shadow-md">
         <Heading as="h1" size="lg" className="text-center mb-4">
           Auth Page

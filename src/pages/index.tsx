@@ -6,19 +6,20 @@ import {
   AutoCompleteItem,
   AutoCompleteList,
 } from "@choc-ui/chakra-autocomplete";
+import { List, AutoSizer } from "react-virtualized";
 import { useRecoilValue } from "recoil";
 import { useRouter } from "next/router";
+import Link from "next/link";
+import Head from "next/head";
 
 import { Post } from "@/types/types";
 import { authTokenState } from "@/state/atoms";
 
 import withAuth from "@/components/withAuth";
 import PostCard from "@/components/PostCard";
-import { useApi } from "@/hooks/useApi";
+import { useApi, useDebounce } from "@/hooks";
 import { ENDPOINTS, METHODS } from "@/constants/api";
 import NewPostModal from "@/components/NewPostModal";
-
-let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 interface PostsInSearchField extends Post {
   highlightedTitle?: ReactNode;
@@ -152,6 +153,21 @@ const Home = () => {
     );
   };
 
+  const rowRenderer = ({ index, key, style }: any) => {
+    const post = filteredPosts[index];
+    return (
+      <div key={key} style={style}>
+        <Link href={`/posts/${post.id}`} passHref>
+          <PostCard
+            title={post.title}
+            content={post.content}
+            isNew={post.isNew}
+          />
+        </Link>
+      </div>
+    );
+  };
+
   // Fetch all posts on component mount
   useEffect(() => {
     if (authToken) {
@@ -159,40 +175,52 @@ const Home = () => {
     }
   }, []);
 
+  const debouncedTitleQuery = useDebounce(titleSearchQuery, 600);
+
   useEffect(() => {
-    if (titleSearchQuery.length < 3) {
+    if (debouncedTitleQuery.length < 3) {
       setFilteredPostsInSearch([]);
       setNoResultsText("Type at least 3 characters");
       return;
     }
 
-    // Filter the posts by content or title
-    // Debounce to not perform calculation on every type
-    if (debounceTimer) clearTimeout(debounceTimer);
-    setNoResultsText("Searching...");
-    debounceTimer = setTimeout(() => {
-      const filtered = posts
-        .filter(
-          (post) =>
-            post.title.toLowerCase().includes(titleSearchQuery.toLowerCase()) ||
-            post.content.toLowerCase().includes(titleSearchQuery.toLowerCase()),
-        )
-        .map((post) => ({
-          ...post,
-          // Display matching part of title/content highlighted
-          highlightedTitle: highlightMatch(post.title, titleSearchQuery),
-          highlightedContent: highlightMatch(post.content, titleSearchQuery),
-        }));
-      setFilteredPostsInSearch(filtered);
-      if (filtered.length === 0) setNoResultsText("No Results");
-    }, 600);
-  }, [titleSearchQuery]);
+    const filtered = posts
+      .filter(
+        (post) =>
+          post.title
+            .toLowerCase()
+            .includes(debouncedTitleQuery.toLowerCase()) ||
+          post.content
+            .toLowerCase()
+            .includes(debouncedTitleQuery.toLowerCase()),
+      )
+      .map((post) => ({
+        ...post,
+        highlightedTitle: highlightMatch(post.title, debouncedTitleQuery),
+        highlightedContent: highlightMatch(post.content, debouncedTitleQuery),
+      }));
+
+    setFilteredPostsInSearch(filtered);
+    if (filtered.length === 0) setNoResultsText("No Results");
+  }, [debouncedTitleQuery]);
 
   return (
     <Box
-      className="flex flex-col min-h-screen bg-gray-50 text-black fixed w-full"
+      className="flex flex-col min-h-screen text-black fixed w-full"
       style={{ minWidth: "100vw" }}
     >
+      <Head>
+        <title>Posts Management Application</title>
+        <meta
+          name="description"
+          content="Browse and manage posts with advanced search and filtering options."
+        />
+        <meta
+          name="keywords"
+          content="Posts, Blog, Next.js, Chakra UI, React, Management"
+        />
+        <meta name="author" content="ThinkEasy s.r.o. by Nathan Danzmann" />
+      </Head>
       <Box as="main" className="flex-grow p-4">
         {error && <Text color="red.500">{error}</Text>}
 
@@ -276,7 +304,7 @@ const Home = () => {
         </Box>
 
         <Box
-          className="h-[70vh] overflow-y-auto rounded shadow-md bg-gray-100 p-4"
+          className="h-[52vh] overflow-y-hidden rounded shadow-md bg-gray-100 p-4"
           borderWidth="1px"
         >
           {loading ? (
@@ -284,16 +312,18 @@ const Home = () => {
               <Spinner size="lg" />
             </Box>
           ) : filteredPosts.length > 0 ? (
-            <VStack spacing={4} align="stretch">
-              {filteredPosts.map((post) => (
-                <PostCard
-                  key={post.id}
-                  title={post.title}
-                  content={post.content}
-                  onClick={() => router.push(`/posts/${post.id}`)}
-                  isNew={post.isNew}
-                />
-              ))}
+            <VStack spacing={4} align="stretch" minHeight={600}>
+              <AutoSizer>
+                {({ height, width }) => (
+                  <List
+                    width={width}
+                    height={height}
+                    rowHeight={100}
+                    rowCount={filteredPosts.length}
+                    rowRenderer={rowRenderer}
+                  />
+                )}
+              </AutoSizer>
             </VStack>
           ) : (
             <Text className="text-black">No posts available.</Text>

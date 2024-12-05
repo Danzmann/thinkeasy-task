@@ -6,7 +6,7 @@ import styles from "./PostCard.module.scss";
 interface PostCardProps {
   title: string;
   content: string;
-  onClick: () => void;
+  onClick?: () => void;
   isNew?: boolean;
 }
 
