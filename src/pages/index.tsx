@@ -206,7 +206,7 @@ const Home = () => {
 
   return (
     <Box
-      className="flex flex-col min-h-screen bg-gray-50 text-black fixed w-full"
+      className="flex flex-col min-h-screen text-black fixed w-full"
       style={{ minWidth: "100vw" }}
     >
       <Head>

@@ -5,6 +5,7 @@ import { RecoilRoot, useSetRecoilState, useRecoilValue } from "recoil";
 import { useRouter } from "next/router";
 
 import { geistSans, geistMono } from "@/theme/fonts";
+import customTheme from "@/theme/theme";
 import {
   appLoadingState,
   authTokenState,
@@ -78,14 +79,14 @@ function MyApp({ Component, pageProps }: AppProps) {
 
   const handleLogout = () => {
     deleteLocalStorage();
-    window.location.href = "/auth";
+    router.push("/auth");
   };
 
   const isAuthPage = router.pathname === "/auth";
 
   return (
     <RecoilRoot>
-      <ChakraProvider>
+      <ChakraProvider theme={customTheme}>
         <div
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
