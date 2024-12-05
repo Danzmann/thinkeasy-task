@@ -11,3 +11,8 @@ export interface Post {
   published: boolean;
   authorId: string;
 }
+
+export interface NewPost {
+  title: string;
+  content: string;
+}

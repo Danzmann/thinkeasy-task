@@ -1,41 +1,21 @@
-import React, { useEffect, useState } from "react";
-import { Box, Text, Spinner, VStack, Button } from "@chakra-ui/react";
+import React from "react";
+import { Box, Text, VStack, Button } from "@chakra-ui/react";
 import { useRouter } from "next/router";
-import { useApi } from "@/hooks/useApi";
-import { ENDPOINTS, METHODS } from "@/constants/api";
-import { Post } from "@/types/types";
+import { GetServerSideProps } from "next";
 import { format } from "date-fns";
+import Head from "next/head";
+
+import { Post } from "@/types/types";
 import withAuth from "@/components/withAuth";
+import { ENDPOINTS } from "@/constants/api";
 
-const PostDetails = () => {
+interface PostDetailsProps {
+  post: Post | null;
+  error: string | null;
+}
+
+const PostDetails: React.FC<PostDetailsProps> = ({ post, error }) => {
   const router = useRouter();
-  const { apiCall } = useApi();
-  const { id } = router.query;
-
-  const [post, setPost] = useState<Post | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (id) {
-      const fetchPost = async () => {
-        setLoading(true);
-        try {
-          const fetchedPost = await apiCall<Post>(
-            ENDPOINTS.postById(id as string),
-            METHODS.GET,
-          );
-          setPost(fetchedPost);
-        } catch (error: any) {
-          setError(error.message);
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      fetchPost();
-    }
-  }, [id]);
 
   const formatDate = (dateString: string) => {
     return format(new Date(dateString), "PPPpp"); // Format as "Jan 1, 2024, 1:00 PM"
@@ -43,11 +23,18 @@ const PostDetails = () => {
 
   return (
     <Box className="min-h-screen bg-gray-50 text-black p-4">
-      {loading ? (
-        <Box className="flex justify-center items-center h-full">
-          <Spinner size="lg" />
-        </Box>
-      ) : error ? (
+      {post && (
+        <Head>
+          <title>{post.title} | Posts Management Application</title>
+          <meta name="description" content={post.content.substring(0, 150)} />
+          <meta
+            name="keywords"
+            content="Posts, Blog, Next.js, Chakra UI, React, Details"
+          />
+          <meta name="author" content={post.authorId} />
+        </Head>
+      )}
+      {error ? (
         <Text color="red.500">{error}</Text>
       ) : post ? (
         <VStack
@@ -102,3 +89,36 @@ const PostDetails = () => {
 };
 
 export default withAuth(PostDetails);
+
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  const { id } = context.params as { id: string };
+  let post: Post | null = null;
+  let error: string | null = null;
+
+  try {
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_BASE_URL}${ENDPOINTS.postById(id)}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch post with id ${id}`);
+    }
+
+    post = await response.json();
+  } catch (err: any) {
+    error = err.message || "An unexpected error occurred.";
+  }
+
+  return {
+    props: {
+      post,
+      error,
+    },
+  };
+};
