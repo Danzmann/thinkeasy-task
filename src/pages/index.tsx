@@ -9,17 +9,17 @@ import {
 import { List, AutoSizer } from "react-virtualized";
 import { useRecoilValue } from "recoil";
 import { useRouter } from "next/router";
+import Link from "next/link";
+import Head from "next/head";
 
 import { Post } from "@/types/types";
 import { authTokenState } from "@/state/atoms";
 
 import withAuth from "@/components/withAuth";
 import PostCard from "@/components/PostCard";
-import { useApi } from "@/hooks/useApi";
+import { useApi, useDebounce } from "@/hooks";
 import { ENDPOINTS, METHODS } from "@/constants/api";
 import NewPostModal from "@/components/NewPostModal";
-
-let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 interface PostsInSearchField extends Post {
   highlightedTitle?: ReactNode;
@@ -157,12 +157,13 @@ const Home = () => {
     const post = filteredPosts[index];
     return (
       <div key={key} style={style}>
-        <PostCard
-          title={post.title}
-          content={post.content}
-          onClick={() => router.push(`/posts/${post.id}`)}
-          isNew={post.isNew}
-        />
+        <Link href={`/posts/${post.id}`} passHref>
+          <PostCard
+            title={post.title}
+            content={post.content}
+            isNew={post.isNew}
+          />
+        </Link>
       </div>
     );
   };
@@ -174,40 +175,52 @@ const Home = () => {
     }
   }, []);
 
+  const debouncedTitleQuery = useDebounce(titleSearchQuery, 600);
+
   useEffect(() => {
-    if (titleSearchQuery.length < 3) {
+    if (debouncedTitleQuery.length < 3) {
       setFilteredPostsInSearch([]);
       setNoResultsText("Type at least 3 characters");
       return;
     }
 
-    // Filter the posts by content or title
-    // Debounce to not perform calculation on every type
-    if (debounceTimer) clearTimeout(debounceTimer);
-    setNoResultsText("Searching...");
-    debounceTimer = setTimeout(() => {
-      const filtered = posts
-        .filter(
-          (post) =>
-            post.title.toLowerCase().includes(titleSearchQuery.toLowerCase()) ||
-            post.content.toLowerCase().includes(titleSearchQuery.toLowerCase()),
-        )
-        .map((post) => ({
-          ...post,
-          // Display matching part of title/content highlighted
-          highlightedTitle: highlightMatch(post.title, titleSearchQuery),
-          highlightedContent: highlightMatch(post.content, titleSearchQuery),
-        }));
-      setFilteredPostsInSearch(filtered);
-      if (filtered.length === 0) setNoResultsText("No Results");
-    }, 600);
-  }, [titleSearchQuery]);
+    const filtered = posts
+      .filter(
+        (post) =>
+          post.title
+            .toLowerCase()
+            .includes(debouncedTitleQuery.toLowerCase()) ||
+          post.content
+            .toLowerCase()
+            .includes(debouncedTitleQuery.toLowerCase()),
+      )
+      .map((post) => ({
+        ...post,
+        highlightedTitle: highlightMatch(post.title, debouncedTitleQuery),
+        highlightedContent: highlightMatch(post.content, debouncedTitleQuery),
+      }));
+
+    setFilteredPostsInSearch(filtered);
+    if (filtered.length === 0) setNoResultsText("No Results");
+  }, [debouncedTitleQuery]);
 
   return (
     <Box
       className="flex flex-col min-h-screen bg-gray-50 text-black fixed w-full"
       style={{ minWidth: "100vw" }}
     >
+      <Head>
+        <title>Posts Management Application</title>
+        <meta
+          name="description"
+          content="Browse and manage posts with advanced search and filtering options."
+        />
+        <meta
+          name="keywords"
+          content="Posts, Blog, Next.js, Chakra UI, React, Management"
+        />
+        <meta name="author" content="ThinkEasy s.r.o. by Nathan Danzmann" />
+      </Head>
       <Box as="main" className="flex-grow p-4">
         {error && <Text color="red.500">{error}</Text>}
 
